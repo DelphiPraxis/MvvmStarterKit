@@ -20,6 +20,8 @@ type
   private
     procedure ShowAlbumView(const AAlbum: TAlbum;
       const AResultProc: TProc<TModalResult>);
+    function GetCanDeleteAlbum: Boolean;
+    function GetCanEditAlbum: Boolean;
   {$ENDREGION 'Internal Declarations'}
   public
     constructor Create(const AAlbums: TAlbums);
@@ -28,11 +30,12 @@ type
     procedure AddAlbum;
     procedure DeleteAlbum;
     procedure EditAlbum;
-    function HasSelectedAlbum: Boolean;
 
     { Bindable properties }
     property Albums: TEnumerable<TAlbum> read GetAlbums;
     property SelectedAlbum: TAlbum read FSelectedAlbum write SetSelectedAlbum;
+    property CanDeleteAlbum: Boolean read GetCanDeleteAlbum;
+    property CanEditAlbum: Boolean read GetCanEditAlbum;
   end;
 
 implementation
@@ -110,8 +113,12 @@ begin
   Result := FAlbums;
 end;
 
+function TViewModelAlbums.GetCanDeleteAlbum: Boolean;
+begin
+  Result := Assigned(FSelectedAlbum);
+end;
 
-function TViewModelAlbums.HasSelectedAlbum: Boolean;
+function TViewModelAlbums.GetCanEditAlbum: Boolean;
 begin
   Result := Assigned(FSelectedAlbum);
 end;
@@ -122,6 +129,8 @@ begin
   begin
     FSelectedAlbum := Value;
     PropertyChanged('SelectedAlbum');
+    PropertyChanged('CanDeleteAlbum');
+    PropertyChanged('CanEditAlbum');
   end;
 end;
 

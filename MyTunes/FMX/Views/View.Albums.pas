@@ -145,8 +145,10 @@ begin
 
   { Bind actions }
   ActionAddAlbum.Bind(ViewModel.AddAlbum);
-  ActionDeleteAlbum.Bind(Self.DeleteAlbum, ViewModel.HasSelectedAlbum);
-  ActionEditAlbum.Bind(ViewModel.EditAlbum, ViewModel.HasSelectedAlbum);
+  ActionDeleteAlbum.Bind(Self.DeleteAlbum);
+  Binder.Bind(ViewModel, 'CanDeleteAlbum', ActionDeleteAlbum, 'Enabled', TgoBindDirection.OneWay);
+  ActionEditAlbum.Bind(ViewModel.EditAlbum);
+  Binder.Bind(ViewModel, 'CanEditAlbum', ActionEditAlbum, 'Enabled', TgoBindDirection.OneWay);
 end;
 
 end.

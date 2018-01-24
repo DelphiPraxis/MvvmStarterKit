@@ -157,9 +157,11 @@ end;
 
 procedure TTestViewModelAlbums.TestHasSelectedAlbum;
 begin
-  Assert.IsFalse(FViewModel.HasSelectedAlbum);
+  Assert.IsFalse(FViewModel.CanDeleteAlbum);
+  Assert.IsFalse(FViewModel.CanEditAlbum);
   FViewModel.SelectedAlbum := TModel.Instance.Albums[0];
-  Assert.IsTrue(FViewModel.HasSelectedAlbum);
+  Assert.IsTrue(FViewModel.CanDeleteAlbum);
+  Assert.IsTrue(FViewModel.CanEditAlbum);
 end;
 
 procedure TTestViewModelAlbums.TestNotifications;
@@ -174,7 +176,7 @@ begin
 
   Assert.AreEqual('', FChangedProperties);
   FViewModel.SelectedAlbum := TModel.Instance.Albums[0];
-  Assert.AreEqual('SelectedAlbum,', FChangedProperties);
+  Assert.AreEqual('SelectedAlbum,CanDeleteAlbum,CanEditAlbum,', FChangedProperties);
 end;
 
 initialization
