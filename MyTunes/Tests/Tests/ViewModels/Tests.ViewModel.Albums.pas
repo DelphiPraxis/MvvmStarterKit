@@ -49,7 +49,7 @@ end;
 
 procedure TTestViewModelAlbums.Setup;
 begin
-  FViewModel := TViewModelAlbums.Create;
+  FViewModel := TViewModelAlbums.Create(TModel.Instance.Albums);
 end;
 
 procedure TTestViewModelAlbums.Teardown;

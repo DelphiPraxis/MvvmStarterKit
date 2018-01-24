@@ -81,7 +81,6 @@ uses
   Grijjy.Mvvm.DataBinding,
   Model.Album,
   Model.Track,
-  Model,
   Template.Track;
 
 {$R *.fmx}

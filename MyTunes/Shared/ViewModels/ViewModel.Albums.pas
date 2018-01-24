@@ -7,21 +7,23 @@ uses
   System.SysUtils,
   System.Generics.Collections,
   Grijjy.Mvvm.Observable,
-  Model.Album,
-  Model;
+  Model.Album;
 
 type
   TViewModelAlbums = class(TgoObservable)
   {$REGION 'Internal Declarations'}
   private
+    FAlbums: TAlbums;
     FSelectedAlbum: TAlbum;
-    function GetAlbums: TEnumerable<TAlbum>; inline;
+    function GetAlbums: TEnumerable<TAlbum>;
     procedure SetSelectedAlbum(const Value: TAlbum);
   private
     procedure ShowAlbumView(const AAlbum: TAlbum;
       const AResultProc: TProc<TModalResult>);
   {$ENDREGION 'Internal Declarations'}
   public
+    constructor Create(const AAlbums: TAlbums);
+
     { Actions }
     procedure AddAlbum;
     procedure DeleteAlbum;
@@ -42,6 +44,13 @@ uses
 
 { TViewModelAlbums }
 
+constructor TViewModelAlbums.Create(const AAlbums: TAlbums);
+begin
+  Assert(Assigned(AAlbums));
+  inherited Create;
+  FAlbums := AAlbums;
+end;
+
 procedure TViewModelAlbums.AddAlbum;
 var
   Album: TAlbum;
@@ -53,7 +62,7 @@ begin
       begin
         if (AModalResult = mrOk) then
         begin
-          TModel.Instance.Albums.Add(Album);
+          FAlbums.Add(Album);
           SetSelectedAlbum(Album);
         end
         else
@@ -68,7 +77,7 @@ end;
 procedure TViewModelAlbums.DeleteAlbum;
 begin
   Assert(Assigned(FSelectedAlbum));
-  TModel.Instance.Albums.Remove(FSelectedAlbum);
+  FAlbums.Remove(FSelectedAlbum);
   SetSelectedAlbum(nil);
 end;
 
@@ -98,7 +107,7 @@ end;
 
 function TViewModelAlbums.GetAlbums: TEnumerable<TAlbum>;
 begin
-  Result := TModel.Instance.Albums;
+  Result := FAlbums;
 end;
 
 

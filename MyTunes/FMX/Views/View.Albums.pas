@@ -92,7 +92,7 @@ begin
   { Always show master view, also on mobile. }
   MultiView.ShowMaster;
 
-  InitView(TViewModelAlbums.Create, True);
+  InitView(TViewModelAlbums.Create(TModel.Instance.Albums), True);
 end;
 
 procedure TViewAlbums.DeleteAlbum;

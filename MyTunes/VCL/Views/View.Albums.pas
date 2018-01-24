@@ -79,7 +79,7 @@ constructor TViewAlbums.Create(AOwner: TComponent);
 begin
   inherited;
   ReportMemoryLeaksOnShutdown := True;
-  InitView(TViewModelAlbums.Create, True)
+  InitView(TViewModelAlbums.Create(TModel.Instance.Albums), True)
 end;
 
 procedure TViewAlbums.DeleteAlbum;
