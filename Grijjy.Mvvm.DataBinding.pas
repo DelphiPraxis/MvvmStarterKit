@@ -114,7 +114,6 @@ type
   private type
     TBinding = class(TComponent)
     strict private
-      [unsafe] FBinder: TgoDataBinder;
       [unsafe] FSourceRoot: TObject;
       [unsafe] FTargetRoot: TObject;
       FSourcePath: TPropertyPath;
@@ -149,8 +148,9 @@ type
     protected
       procedure Notification(AComponent: TComponent; Operation: TOperation); override;
     public
-      constructor Create(const ABinder: TgoDataBinder; const ASourceRoot,
-        ATargetRoot: TObject; const ASourcePath, ATargetPath: TPropertyPath;
+      constructor Create(
+        const ASourceRoot, ATargetRoot: TObject;
+        const ASourcePath, ATargetPath: TPropertyPath;
         const ASourceGetter, ATargetGetter: TgoPropertyGetter;
         const ASourceSetter, ATargetSetter: TgoPropertySetter;
         const AConverterClass: TgoValueConverterClass;
@@ -417,7 +417,7 @@ begin
          SourcePath.Leaf.PropType^.NameFld.ToString]);
   end;
 
-  Binding := TBinding.Create(Self, ASource, ATarget, SourcePath, TargetPath,
+  Binding := TBinding.Create(ASource, ATarget, SourcePath, TargetPath,
     SourceGetter, TargetGetter, SourceSetter, TargetSetter,
     AValueConverterClass, ADirection, AFlags);
 
@@ -570,7 +570,7 @@ begin
     HandleSourceLeafPropertyChanged(Source, FSourcePath.LeafPropertyName);
 end;
 
-constructor TgoDataBinder.TBinding.Create(const ABinder: TgoDataBinder;
+constructor TgoDataBinder.TBinding.Create(
   const ASourceRoot, ATargetRoot: TObject; const ASourcePath,
   ATargetPath: TPropertyPath; const ASourceGetter,
   ATargetGetter: TgoPropertyGetter; const ASourceSetter,
@@ -578,7 +578,6 @@ constructor TgoDataBinder.TBinding.Create(const ABinder: TgoDataBinder;
   const AConverterClass: TgoValueConverterClass;
   const ADirection: TgoBindDirection; const AFlags: TgoBindFlags);
 begin
-  Assert(Assigned(ABinder));
   Assert(Assigned(ASourceRoot));
   Assert(Assigned(ATargetRoot));
   Assert(Assigned(ASourcePath.Leaf));
@@ -586,7 +585,6 @@ begin
   Assert(Assigned(ASourceGetter));
   Assert(Assigned(ATargetSetter));
   inherited Create(nil);
-  FBinder := ABinder;
   FTrackedInstances := TgoSet<Pointer>.Create;
   FSourceRoot := ASourceRoot;
   FTargetRoot := ATargetRoot;
