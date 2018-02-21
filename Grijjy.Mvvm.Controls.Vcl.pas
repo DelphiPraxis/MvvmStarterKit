@@ -14,6 +14,8 @@ interface
 
 uses
   System.Classes,
+  Winapi.Messages,
+  Winapi.CommCtrl,
   Vcl.StdCtrls,
   Vcl.ExtCtrls,
   Vcl.ComCtrls,
@@ -286,6 +288,74 @@ type
       The associated object is the object in the TListItem.Data property. }
     property SelectedItem: TObject read GetSelectedItem write SetSelectedItem;
   end;
+
+    { TRichEdit with support for light-weight two-way data binding.
+    Supports property changed notifications for: Text
+    Supports property changing notifications for: Text
+    NOTE: Both PropertyChanged and PropertyChangeTracking notifications are
+    fired for each individual keypress. }
+
+  TRichedit = class(Vcl.ComCtrls.TRichEdit, IgoNotifyPropertyChanged,
+    IgoNotifyPropertyChangeTracking)
+  {$REGION 'Internal Declarations'}
+  private
+    FOnPropertyChanged: IgoPropertyChangedEvent;
+    FOnPropertyChangeTracking: IgoPropertyChangeTrackingEvent;
+    procedure SetText_( Value: string);
+    function GetText_: String;
+  protected
+    procedure Change; override;
+  protected
+    { IgoNotifyPropertyChanged }
+    function GetPropertyChangedEvent: IgoPropertyChangedEvent;
+  protected
+    { IgoNotifyPropertyChangeTracking }
+    function GetPropertyChangeTrackingEvent: IgoPropertyChangeTrackingEvent;
+  {$ENDREGION 'Internal Declarations'}
+  public
+    property Text: string read GetText_ write SetText_;
+  end;
+
+  { TTreeView with support for light-weight two-way data binding.
+    Supports property changed notifications for: Selected, SelectedItem.
+    NOTE: When used with data binding, the TListItem.Data property is used
+          to store the associated object.
+    NOTE: When used with data binding, the GetDetail value of a data template
+          is assigned to TListItem.SubItems[0]. }
+
+  TTreeView = class(Vcl.ComCtrls.TTreeView, IgoCollectionViewProvider,
+    IgoNotifyPropertyChanged)
+  {$REGION 'Internal Declarations'}
+  private
+    FOnPropertyChanged: IgoPropertyChangedEvent;
+    FView: TgoCollectionView;
+    orgOnChange: TTVChangedEvent;
+    function GetSelectedNode: TObject; inline;
+    procedure SetSelectedNode(const Value: TObject);
+    procedure DoChange(Sender: TObject; Node: TTreeNode);
+  private
+    function FindTreeNode(const AItem: TObject): TTreeNode;
+  protected
+    procedure DoSelectNode(Node: TTreeNode; Selected: Boolean);
+  protected
+    { IgoCollectionViewProvider }
+    function GetCollectionView: IgoCollectionView;
+  protected
+    { IgoNotifyPropertyChanged }
+    function GetPropertyChangedEvent: IgoPropertyChangedEvent;
+  protected
+  {$ENDREGION 'Internal Declarations'}
+  public
+    { Destructor }
+    constructor Create(AOwner: TComponent); override;
+    destructor Destroy; override;
+
+    { The object that is associated with the selected item, or nil if there is
+      no item selected or there is no object associated with the selected item.
+      The associated object is the object in the TListItem.Data property. }
+    property SelectedNode: TObject read GetSelectedNode write SetSelectedNode;
+  end;
+
 {$ENDREGION 'Vcl.ComCtrs'}
 
 {$REGION 'Vcl.WinXCtrls'}
@@ -388,7 +458,44 @@ type
 implementation
 
 uses
-  Vcl.Graphics;
+  Vcl.Graphics, Vcl.Clipbrd;
+
+type
+  TComboBoxCollectionView = class(TgoCollectionView)
+  private
+    FComboBox: TComboBox;
+  protected
+    procedure ClearItemsInView; override;
+    procedure BeginUpdateView; override;
+    procedure EndUpdateView; override;
+    procedure AddItemToView(const AItem: TObject); override;
+    procedure DeleteItemFromView(const AItemIndex: Integer); override;
+    procedure UpdateItemInView(const AItem: TObject;
+      const APropertyName: String); override;
+    procedure UpdateAllItemsInView; override;
+  public
+    constructor Create(const AComboEdit: TComboEdit);
+  end;
+
+
+type
+  TTreeViewCollectionView = class(TgoCollectionView)
+  private
+    FTreeView: TTreeView;
+  private
+    procedure UpdateTreeNode(const ATreeNode: TTreeNode; const AItem: TObject);
+  protected
+    procedure ClearItemsInView; override;
+    procedure BeginUpdateView; override;
+    procedure EndUpdateView; override;
+    procedure AddItemToView(const AItem: TObject); override;
+    procedure DeleteItemFromView(const AItemIndex: Integer); override;
+    procedure UpdateItemInView(const AItem: TObject;
+      const APropertyName: String); override;
+    procedure UpdateAllItemsInView; override;
+  public
+    constructor Create(const ATreeView: TTreeView);
+  end;
 
 type
   TListViewCollectionView = class(TgoCollectionView)
@@ -464,6 +571,95 @@ begin
 
   Result := FOnPropertyChangeTracking;
 end;
+
+{ TComboBoxCollectionView }
+
+constructor TComboBoxCollectionView.Create(const AComboBox: TComboBox);
+begin
+  Assert(Assigned(AComboBox));
+  inherited Create;
+  FComboBox := AComboBox;
+end;
+
+procedure TComboBoxCollectionView.ClearItemsInView;
+begin
+  if Assigned(FComboBox) then
+  begin
+    FComboBox.Items.Clear;
+  end;
+end;
+
+procedure TComboBoxCollectionView.BeginUpdateView;
+begin
+  if Assigned(FComboBox) then
+  begin
+    FComboBox.BeginUpdate;
+  end;
+end;
+
+
+procedure TComboBoxCollectionView.EndUpdateView;
+begin
+  if Assigned(FComboBox) then
+  begin
+    FComboBox.EndUpdate;
+  end;
+end;
+
+procedure TComboBoxCollectionView.AddItemToView(const AItem: TObject);
+var
+  sItem: string;
+begin
+  if Assigned(FComboBox) then
+  begin
+    sItem := Template.GetTitle(AItem);
+    FComboBox.Items.AddObject( sItem, AItem);
+  end;
+end;
+
+procedure TComboBoxCollectionView.DeleteItemFromView(const AItemIndex: Integer);
+begin
+  if Assigned(FComboBox) then
+  begin
+    FComboBox.Items.Delete( AItemIndex);
+  end;
+end;
+
+procedure TComboBoxCollectionView.UpdateItemInView(const AItem: TObject;
+    const APropertyName: String);
+var
+  Index: Integer;
+begin
+  if Assigned(FComboBox) then
+  begin
+    Index := FComboBox.Items.IndexOfObject( AItem);
+     if (Index >= 0) then
+     begin
+       Combo.Items.Strings[Index] := Template.GetTitle( AItem);
+       Combo.Items.Objects[Index] := AItem;
+     end;
+  end;
+end;
+
+procedure TComboBoxCollectionView.UpdateAllItemsInView;
+var
+  Item: TObject;
+  sItem: string;
+  Index: Integer;
+begin
+  if Assigned(FComboBox) then
+  begin
+    Index := 0;
+    for Item in Source do
+    begin
+      sItem := FComboBox.Items.Strings[index];
+      FComboBox.Items.Strings[Index] := Template.GetTitle( Item);
+      FComboBox.Items.Objects[Index] := Item;
+      Inc(Index);
+    end;
+  end;
+end;
+
 
 { TComboBox }
 
@@ -740,6 +936,155 @@ begin
   Selected := FindListItem(Value);
 end;
 
+{ TRichEdit }
+
+procedure TRichedit.SetText_(Value: string);
+var
+  st: TStringStream;
+begin
+  if PlainText then
+  begin
+    Text := Value;
+  end
+  else
+  begin
+    try
+      st := TStringStream.Create;
+      st.WriteString( Value);
+      st.Position := 0;
+      Lines.LoadFromStream(  st);
+    finally
+      st.Free;
+    end;
+  end;
+end;
+
+function TRichEdit.GetText_;
+var
+  st: TStringStream;
+begin
+  if PlainText then
+  begin
+    Result := Text;
+  end
+  else
+  begin
+    try
+      st := TStringStream.Create;
+
+      Lines.SaveToStream( st);
+      st.Position := 0;
+      Result := st.ReadString( st.Size);
+    finally
+      st.Free;
+    end;
+  end;
+end;
+
+procedure TRichEdit.Change;
+begin
+  if Assigned(FOnPropertyChanged) then
+    FOnPropertyChanged.Invoke(Self, 'Text');
+
+  if Assigned(FOnPropertyChangeTracking) then
+    FOnPropertyChangeTracking.Invoke(Self, 'Text');
+  inherited;
+end;
+
+function TRichEdit.GetPropertyChangedEvent: IgoPropertyChangedEvent;
+begin
+  if (FOnPropertyChanged = nil) then
+    FOnPropertyChanged := TgoPropertyChangedEvent.Create;
+
+  Result := FOnPropertyChanged;
+end;
+
+function TRichedit.GetPropertyChangeTrackingEvent: IgoPropertyChangeTrackingEvent;
+begin
+  if (FOnPropertyChangeTracking = nil) then
+    FOnPropertyChangeTracking := TgoPropertyChangeTrackingEvent.Create;
+
+  Result := FOnPropertyChangeTracking;
+end;
+
+
+{ TTreeView }
+
+constructor TTreeView.Create(AOwner: TComponent);
+begin
+  inherited;
+  orgOnChange := OnChange;
+  OnChange := DoChange;
+end;
+
+destructor TTreeView.Destroy;
+begin
+  FView.Free;
+  inherited;
+end;
+
+procedure TTreeView.DoChange(Sender: TObject; Node: TTreeNode);
+begin
+  DoSelectNode( Node, True);
+  if Assigned( orgOnChange) then
+      orgOnChange( Sender, Node);
+end;
+
+procedure TTreeView.DoSelectNode(Node: TTreeNode; Selected: Boolean);
+begin
+  if Selected and Assigned(FOnPropertyChanged) then
+  begin
+    FOnPropertyChanged.Invoke(Self, 'Selected');
+    FOnPropertyChanged.Invoke(Self, 'SelectedNode');
+  end;
+  inherited;
+end;
+
+function TTreeView.FindTreeNode(const AItem: TObject): TTreeNode;
+var
+  node: TTreeNode;
+begin
+  Result := nil;
+  for node in Items do
+  begin
+  if node.Data = AItem then
+    Result := node;
+  end;
+end;
+
+function TTreeView.GetCollectionView: IgoCollectionView;
+begin
+  if (FView = nil) then
+    FView := TTreeViewCollectionView.Create(Self);
+
+  Result := FView;
+end;
+
+function TTreeView.GetPropertyChangedEvent: IgoPropertyChangedEvent;
+begin
+  if (FOnPropertyChanged = nil) then
+    FOnPropertyChanged := TgoPropertyChangedEvent.Create;
+
+  Result := FOnPropertyChanged;
+end;
+
+function TTreeView.GetSelectedNode: TObject;
+var
+  Sel: TTreeNode;
+begin
+  Sel := Selected;
+  if (Sel = nil) then
+    Result := nil
+  else
+    Result := Sel.Data;
+end;
+
+procedure TTreeView.SetSelectedNode(const Value: TObject);
+begin
+  Selected := FindTreeNode(Value);
+end;
+
+
 { TToggleSwitch }
 
 procedure TToggleSwitch.Click;
@@ -920,6 +1265,89 @@ begin
 
   AListItem.ImageIndex := Template.GetImageIndex(AItem);
   AListItem.Data := AItem;
+end;
+
+{ TTreeViewCollectionView }
+
+procedure TTreeViewCollectionView.AddItemToView(const AItem: TObject);
+var
+  Item: TTreeNode;
+
+  procedure Branch( Parent: TTreeNode; AItem: TObject );
+  var
+    Item: TTreeNode;
+    obj: TObject;
+  begin
+    for obj in Template.GetChildren( AItem) do
+    begin
+      Item := FTreeView.Items.AddChild( Parent, Template.GetTitle( obj));
+      UpdateTreeNode(Item, obj);
+      Branch( Item, obj);
+    end;
+  end;
+
+begin
+  Item := FTreeView.Items.Add( Nil, Template.GetTitle( AItem));
+  UpdateTreeNode(Item, AItem);
+  Branch( Item, AItem);
+end;
+
+procedure TTreeViewCollectionView.UpdateTreeNode(const ATreeNode: TTreeNode; const AItem: TObject);
+begin
+  ATreeNode.Data := AItem;
+end;
+
+
+procedure TTreeViewCollectionView.BeginUpdateView;
+begin
+  FTreeView.Items.BeginUpdate;
+end;
+
+procedure TTreeViewCollectionView.ClearItemsInView;
+begin
+  FTreeView.Items.Clear;
+end;
+
+constructor TTreeViewCollectionView.Create(const ATreeView: TTreeView);
+begin
+  Assert(Assigned(ATreeView));
+  inherited Create;
+  FTreeView := ATreeView;
+end;
+
+procedure TTreeViewCollectionView.DeleteItemFromView(const AItemIndex: Integer);
+begin
+  FTreeView.Items.Delete(  FTreeView.Items[ AItemIndex]);
+end;
+
+procedure TTreeViewCollectionView.EndUpdateView;
+begin
+  FTreeView.Items.EndUpdate;
+end;
+
+procedure TTreeViewCollectionView.UpdateAllItemsInView;
+var
+  Index: Integer;
+  Item: TObject;
+  Node: TTreeNode;
+begin
+  Index := 0;
+  for Item in Source do
+  begin
+    Node := FTreeView.Items[ Index];
+    UpdateTreeNode( Node, Item);
+    Inc(Index);
+  end;
+end;
+
+procedure TTreeViewCollectionView.UpdateItemInView(const AItem: TObject;
+  const APropertyName: String);
+var
+  Node: TTreeNode;
+begin
+  Node := FTreeView.FindTreeNode(AItem);
+  if (Node <> nil) then
+    UpdateTreeNode(Node, AItem);
 end;
 
 { Globals }

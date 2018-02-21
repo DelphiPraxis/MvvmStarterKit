@@ -338,6 +338,8 @@ type
 
       Returns -1 by default. }
     class function GetImageIndex(const AItem: TObject): Integer; virtual;
+    class function GetParent(const AItem: TObject): TObject; virtual; abstract;
+    class function GetChildren( const AItem: TObject): TList<TObject>; virtual; abstract;
   end;
   TgoDataTemplateClass = class of TgoDataTemplate;
 
