@@ -4,10 +4,10 @@ interface
 
 uses
   Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes, Vcl.Graphics,
-  Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.ComCtrls, Vcl.ExtCtrls
+  Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.ComCtrls, Vcl.ExtCtrls, Vcl.StdCtrls
   ,Grijjy.Mvvm.Controls.Vcl // MUST be listed AFTER all other FMX.* units!
   ,Grijjy.Mvvm.Views.Vcl
-  ,ViewModel.Demo, Vcl.StdCtrls
+  ,ViewModel.Demo
   ;
 
 type
@@ -23,6 +23,12 @@ type
     pnl4: TPanel;
     pnl5: TPanel;
     redtDemo: TRichEdit;
+    ts3: TTabSheet;
+    pnl6: TPanel;
+    pnl7: TPanel;
+    cbDemo: TComboBox;
+    lbl1: TLabel;
+    lblCombo: TLabel;
   private
     { Private-Deklarationen }
 
@@ -45,15 +51,16 @@ Uses
   Grijjy.Mvvm.DataBinding,
   Grijjy.Mvvm.ValueConverters,
   Model.Node,
+  Model.Entry,
   Model,
-  Template.Node
+  Template.Node, Template.Entry
   ;
 
 constructor TViewDemo.Create(AOwner: TComponent);
 begin
   inherited;
-  //ReportMemoryLeaksOnShutdown := True;
-  InitView(TViewModelDemo.Create(TModel.Instance.Nodes), True)
+  ReportMemoryLeaksOnShutdown := True;
+  InitView(TViewModelDemo.Create(TModel.Instance), True)
 end;
 
 procedure TViewDemo.SetupView;
@@ -78,8 +85,17 @@ begin
   //RichEdit
   Binder.Bind(ViewModel, 'sRich', redtDemo, 'Text');
 
+  //ComboBox
+  Binder.Bind(ViewModel, 'SelectedEntry', cbDemo, 'SelectedItem');
+  Binder.Bind(ViewModel, 'SelectedEntry.Text', lblCombo, 'Caption', TgoBindDirection.OneWay);
+
   { Bind collections }
+
+  //TreeView
   Binder.BindCollection<TNode>(ViewModel.Nodes, tvDemo, TTemplateNode);
+
+  //ComboBox
+  Binder.BindCollection<TEntry>(ViewModel.Entries, cbDemo, TTemplateEntry);
 
   { Bind actions }
 end;

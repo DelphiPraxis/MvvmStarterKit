@@ -18,7 +18,7 @@ object ViewDemo: TViewDemo
     Top = 0
     Width = 501
     Height = 490
-    ActivePage = ts2
+    ActivePage = ts3
     Align = alClient
     TabOrder = 0
     object ts1: TTabSheet
@@ -106,6 +106,51 @@ object ViewDemo: TViewDemo
         ParentFont = False
         TabOrder = 2
         Zoom = 100
+      end
+    end
+    object ts3: TTabSheet
+      Caption = 'TComboBox (Collection)'
+      ImageIndex = 2
+      object lbl1: TLabel
+        Left = 16
+        Top = 47
+        Width = 40
+        Height = 13
+        Caption = 'Choose:'
+      end
+      object pnl6: TPanel
+        Left = 0
+        Top = 0
+        Width = 493
+        Height = 34
+        Align = alTop
+        TabOrder = 0
+      end
+      object pnl7: TPanel
+        Left = 0
+        Top = 428
+        Width = 493
+        Height = 34
+        Align = alBottom
+        TabOrder = 1
+        object lblCombo: TLabel
+          Left = 1
+          Top = 1
+          Width = 491
+          Height = 32
+          Align = alClient
+          Alignment = taCenter
+          Caption = '___'
+          ExplicitWidth = 18
+          ExplicitHeight = 13
+        end
+      end
+      object cbDemo: TComboBox
+        Left = 62
+        Top = 47
+        Width = 267
+        Height = 21
+        TabOrder = 2
       end
     end
   end

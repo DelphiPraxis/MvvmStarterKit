@@ -79,13 +79,19 @@ type
     Supports property changing notifications for: Text
     NOTE: Both PropertyChanged and PropertyChangeTracking notifications are
     fired for each individual keypress. }
-  TComboBox = class(Vcl.StdCtrls.TComboBox, IgoNotifyPropertyChanged,
-    IgoNotifyPropertyChangeTracking//, IgoCollectionViewProvider
-    )
+  TComboBox = class(Vcl.StdCtrls.TComboBox, IgoNotifyPropertyChanged,  IgoCollectionViewProvider,
+    IgoNotifyPropertyChangeTracking)
   {$REGION 'Internal Declarations'}
   private
+    FView: TgoCollectionView;
+
     FOnPropertyChanged: IgoPropertyChangedEvent;
     FOnPropertyChangeTracking: IgoPropertyChangeTrackingEvent;
+
+    FSelectedItem: TObject;
+    function GetSelectedItem: TObject; inline;
+    procedure SetSelectedItem(const Value: TObject);
+
   protected
     procedure Change; override;
   protected
@@ -94,7 +100,12 @@ type
   protected
     { IgoNotifyPropertyChangeTracking }
     function GetPropertyChangeTrackingEvent: IgoPropertyChangeTrackingEvent;
+    function GetCollectionView: IgoCollectionView;
   {$ENDREGION 'Internal Declarations'}
+  public
+    { Destructor }
+    destructor Destroy; override;
+    property SelectedItem: TObject read GetSelectedItem write SetSelectedItem;
   end;
 
 type
@@ -314,6 +325,9 @@ type
     function GetPropertyChangeTrackingEvent: IgoPropertyChangeTrackingEvent;
   {$ENDREGION 'Internal Declarations'}
   public
+     { Destructor }
+    destructor Destroy; override;
+
     property Text: string read GetText_ write SetText_;
   end;
 
@@ -330,13 +344,12 @@ type
   private
     FOnPropertyChanged: IgoPropertyChangedEvent;
     FView: TgoCollectionView;
-    orgOnChange: TTVChangedEvent;
     function GetSelectedNode: TObject; inline;
     procedure SetSelectedNode(const Value: TObject);
-    procedure DoChange(Sender: TObject; Node: TTreeNode);
   private
     function FindTreeNode(const AItem: TObject): TTreeNode;
   protected
+    procedure Change( Node: TTreeNode); override;
     procedure DoSelectNode(Node: TTreeNode; Selected: Boolean);
   protected
     { IgoCollectionViewProvider }
@@ -664,6 +677,12 @@ end;
 
 { TComboBox }
 
+destructor TComboBox.Destroy;
+begin
+  FView.Free;
+  inherited;
+end;
+
 procedure TComboBox.Change;
 begin
   if Assigned(FOnPropertyChanged) then
@@ -671,6 +690,8 @@ begin
 
   if Assigned(FOnPropertyChangeTracking) then
     FOnPropertyChangeTracking.Invoke(Self, 'Text');
+
+  SetSelectedItem( Items.Objects[ItemIndex]);
   inherited;
 end;
 
@@ -688,6 +709,31 @@ begin
     FOnPropertyChangeTracking := TgoPropertyChangeTrackingEvent.Create;
 
   Result := FOnPropertyChangeTracking;
+end;
+
+function TComboBox.GetCollectionView: IgoCollectionView;
+begin
+  if (FView = nil) then
+    FView := TComboBoxCollectionView.Create(Self);
+
+  Result := FView;
+end;
+
+ function TComboBox.GetSelectedItem: TObject;
+begin
+  Result := Items.Objects[ItemIndex];
+end;
+
+procedure TComboBox.SetSelectedItem(const Value: TObject);
+begin
+  if FSelectedItem <> Value then
+  begin
+    FSelectedItem := Value;
+
+    if Assigned(FOnPropertyChanged) then
+      FOnPropertyChanged.Invoke(Self, 'SelectedItem');
+  end;
+
 end;
 
 { TCheckBox }
@@ -939,6 +985,11 @@ end;
 
 { TRichEdit }
 
+destructor TRichEdit.Destroy;
+begin
+  inherited;
+end;
+
 procedure TRichedit.SetText_(Value: string);
 var
   st: TStringStream;
@@ -1014,8 +1065,6 @@ end;
 constructor TTreeView.Create(AOwner: TComponent);
 begin
   inherited;
-  orgOnChange := OnChange;
-  OnChange := DoChange;
 end;
 
 destructor TTreeView.Destroy;
@@ -1024,11 +1073,9 @@ begin
   inherited;
 end;
 
-procedure TTreeView.DoChange(Sender: TObject; Node: TTreeNode);
+procedure TTreeView.Change(Node: TTreeNode);
 begin
   DoSelectNode( Node, True);
-  if Assigned( orgOnChange) then
-      orgOnChange( Sender, Node);
 end;
 
 procedure TTreeView.DoSelectNode(Node: TTreeNode; Selected: Boolean);

@@ -5,7 +5,7 @@ interface
 uses
   System.Generics.Collections,
 
-  Model.Node;
+  Model.Node, Model.Entry;
 
 type
   { The "master" model that manages other models.
@@ -19,14 +19,16 @@ type
     class function GetInstance: TModel; inline; static;
   private
     FNodes: TNodes;
+    FEntries: TEntries;
   private
     constructor CreateSingleton(const ADummy: Integer = 0);
-
-    procedure MakeNodes;
   public
     class constructor Create;
     class destructor Destroy;
   {$ENDREGION 'Internal Declarations'}
+  private
+    procedure MakeNodes;
+    procedure MakeEntries;
   public
     constructor Create;
     destructor Destroy; override;
@@ -35,6 +37,7 @@ type
     
     { Bindable properties }
     property Nodes: TNodes read FNodes;
+    property Entries: TEntries read FEntries;
   end;
 
 implementation
@@ -66,13 +69,17 @@ begin
   inherited Create;
  
   FNodes := TNodes.Create;
+  FEntries := TEntries.Create;
 
   MakeNodes;
+  MakeEntries;
 end;
 
 destructor TModel.Destroy;
 begin
-  //FNodes.Free;
+  FNodes.Free;
+  FEntries.Free;
+
   inherited;
 end;
 
@@ -111,7 +118,7 @@ var
   end;
 
 begin
-      Parent := CreateNode( nil, 0, ''); //Root
+      Parent := CreateNode( nil, 0, 'Root'); //Root
       Nodes.Add( Parent);
       for i  := 1 to 5 do
       begin
@@ -121,6 +128,20 @@ begin
           CreateNode( Node, j,  Format( '%d.%d', [i, j]));
         end;
       end;
+end;
+
+procedure TModel.MakeEntries;
+var
+  Entry_: TEntry;
+  i: Integer;
+begin
+  for I := 1 to 10 do
+  begin
+    Entry_ := TEntry.Create;
+    Entry_.ID := i;
+    Entry_.Text := Format( 'Entry %d', [i]);
+    Entries.Add( Entry_);
+  end;
 end;
 
 end.
