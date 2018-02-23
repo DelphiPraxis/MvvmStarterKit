@@ -80,7 +80,8 @@ type
     NOTE: Both PropertyChanged and PropertyChangeTracking notifications are
     fired for each individual keypress. }
   TComboBox = class(Vcl.StdCtrls.TComboBox, IgoNotifyPropertyChanged,
-    IgoNotifyPropertyChangeTracking)
+    IgoNotifyPropertyChangeTracking//, IgoCollectionViewProvider
+    )
   {$REGION 'Internal Declarations'}
   private
     FOnPropertyChanged: IgoPropertyChangedEvent;
@@ -474,7 +475,7 @@ type
       const APropertyName: String); override;
     procedure UpdateAllItemsInView; override;
   public
-    constructor Create(const AComboEdit: TComboEdit);
+    constructor Create(const AComboBox: TComboBox);
   end;
 
 
@@ -593,7 +594,7 @@ procedure TComboBoxCollectionView.BeginUpdateView;
 begin
   if Assigned(FComboBox) then
   begin
-    FComboBox.BeginUpdate;
+    FComboBox.Items.BeginUpdate;
   end;
 end;
 
@@ -602,7 +603,7 @@ procedure TComboBoxCollectionView.EndUpdateView;
 begin
   if Assigned(FComboBox) then
   begin
-    FComboBox.EndUpdate;
+    FComboBox.Items.EndUpdate;
   end;
 end;
 
@@ -635,8 +636,8 @@ begin
     Index := FComboBox.Items.IndexOfObject( AItem);
      if (Index >= 0) then
      begin
-       Combo.Items.Strings[Index] := Template.GetTitle( AItem);
-       Combo.Items.Objects[Index] := AItem;
+       FComboBox.Items.Strings[Index] := Template.GetTitle( AItem);
+       FComboBox.Items.Objects[Index] := AItem;
      end;
   end;
 end;

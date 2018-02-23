@@ -29,3 +29,5 @@ HtmlHelp/
 Html/
 #ignore DUnitX output
 dunitx-results.xml
+__history
+__recovery
