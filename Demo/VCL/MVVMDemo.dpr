@@ -6,7 +6,9 @@ uses
   Model.Node in '..\Shared\Model\Model.Node.pas',
   Model in '..\Shared\Model\Model.pas',
   Template.Node in '..\Shared\Template\Template.Node.pas',
-  ViewModel.Demo in '..\Shared\ViewModel\ViewModel.Demo.pas';
+  ViewModel.Demo in '..\Shared\ViewModel\ViewModel.Demo.pas',
+  Model.Entry in '..\Shared\Model\Model.Entry.pas',
+  Template.Entry in '..\Shared\Template\Template.Entry.pas';
 
 {$R *.res}
 
