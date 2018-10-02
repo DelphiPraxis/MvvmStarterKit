@@ -10,7 +10,7 @@ unit Grijjy.Mvvm.Controls.Fmx;
   (eg. TBindableSpinBox) because the FMX framework uses class names for some
   functionality (for example, see
   IFMXDefaultPropertyValueService.GetDefaultPropertyValue).
-  We could replace this service with or own, but there are other cases where
+  We could replace this service with our own, but there are other cases where
   class names matter (such as with styling). }
 {$INCLUDE 'Grijjy.inc'}
 
@@ -32,6 +32,7 @@ uses
   FMX.ListView,
   FMX.Objects,
   FMX.ActnList,
+  FMX.TreeView,
   Grijjy.Mvvm.Types,
   Grijjy.Mvvm.DataBinding.Collections;
 
@@ -465,6 +466,43 @@ type
   end;
 {$ENDREGION 'FMX.ActnList'}
 
+{$REGION 'FMX.TreeView'}
+type
+  TTreeView = class(Fmx.TreeView.TTreeView, IgoCollectionViewProvider,
+    IgoNotifyPropertyChanged)
+  {$REGION 'Internal Declarations'}
+  private
+    FOnPropertyChanged: IgoPropertyChangedEvent;
+    FView: TgoCollectionView;
+    FOnChanged_ : TNotifyEvent;
+    function GetSelectedNode: TObject; inline;
+    procedure SetSelectedNode(const Value: TObject);
+  private
+    function FindTreeNode(const AItem: TObject): TTreeViewItem;
+  protected
+    procedure Loaded; override;
+    procedure Change( Sender: TObject);
+    procedure DoSelectNode(Node: TTreeViewItem; Selected: Boolean);
+  protected
+    { IgoCollectionViewProvider }
+    function GetCollectionView: IgoCollectionView;
+  protected
+    { IgoNotifyPropertyChanged }
+    function GetPropertyChangedEvent: IgoPropertyChangedEvent;
+  protected
+  {$ENDREGION 'Internal Declarations'}
+  public
+    { Destructor }
+    constructor Create(AOwner: TComponent); override;
+    destructor Destroy; override;
+
+    { The object that is associated with the selected item, or nil if there is
+      no item selected or there is no object associated with the selected item.
+      The associated object is the object in the TListItem.Data property. }
+    property SelectedNode: TObject read GetSelectedNode write SetSelectedNode;
+  end;
+{$ENDREGION 'FMX.TreeView'}
+
 implementation
 
 uses
@@ -504,6 +542,25 @@ type
   TBindableNumberBoxModel = class(TNumberBoxModel)
   protected
     procedure DoChange; override;
+  end;
+
+type
+    TTreeViewCollectionView = class(TgoCollectionView)
+  private
+    FTreeView: TTreeView;
+  private
+    procedure UpdateTreeNode(const ATreeViewItem: TTreeViewItem; const AItem: TObject);
+  protected
+    procedure ClearItemsInView; override;
+    procedure BeginUpdateView; override;
+    procedure EndUpdateView; override;
+    procedure AddItemToView(const AItem: TObject); override;
+    procedure DeleteItemFromView(const AItemIndex: Integer); override;
+    procedure UpdateItemInView(const AItem: TObject;
+      const APropertyName: String); override;
+    procedure UpdateAllItemsInView; override;
+  public
+    constructor Create(const ATreeView: TTreeView);
   end;
 
 type
@@ -1449,6 +1506,194 @@ begin
   Result := inherited Update;
   if (Supported) and Assigned(FCanExecute) then
     Enabled := FCanExecute();
+end;
+
+{ TreeView}
+
+{ TTreeView }
+
+constructor TTreeView.Create(AOwner: TComponent);
+begin
+  inherited;
+end;
+
+destructor TTreeView.Destroy;
+begin
+  FView.Free;
+  inherited;
+end;
+
+procedure TTreeView.Loaded;
+begin
+  inherited;
+  FOnChanged_ := OnChange;
+  OnChange := Change;
+end;
+
+procedure TTreeView.Change( Sender: TObject);
+var
+  Node: TTreeViewItem;
+  tV: TTreeView;
+begin
+  tv := (Sender as TTreeView);
+  if assigned( tv.selected) then
+  begin
+    Node := (Sender as TTreeView).selected;
+    if Assigned( FOnChanged_) then
+      FOnChanged_( node);
+    DoSelectNode( Node, True);
+  end;
+end;
+
+procedure TTreeView.DoSelectNode(Node: TTreeViewItem; Selected: Boolean);
+begin
+  if Selected and Assigned(FOnPropertyChanged) then
+  begin
+    FOnPropertyChanged.Invoke(Self, 'Selected');
+    FOnPropertyChanged.Invoke(Self, 'SelectedNode');
+  end;
+  inherited;
+end;
+
+function TTreeView.FindTreeNode(const AItem: TObject): TTreeViewItem;
+var
+  node: TTreeViewItem;
+  i: Integer;
+begin
+  Result := nil;
+  for i := 0 to Count - 1 do
+  begin
+    node := Items[i];
+    if node.TagObject = AItem then
+      Result := node;
+  end;
+end;
+
+function TTreeView.GetCollectionView: IgoCollectionView;
+begin
+  if (FView = nil) then
+    FView := TTreeViewCollectionView.Create(Self);
+
+  Result := FView;
+end;
+
+function TTreeView.GetPropertyChangedEvent: IgoPropertyChangedEvent;
+begin
+  if (FOnPropertyChanged = nil) then
+    FOnPropertyChanged := TgoPropertyChangedEvent.Create;
+
+  Result := FOnPropertyChanged;
+end;
+
+function TTreeView.GetSelectedNode: TObject;
+var
+  Sel: TTreeViewItem;
+begin
+  Sel := Selected;
+  if (Sel = nil) then
+    Result := nil
+  else
+    Result := Sel.TagObject;
+end;
+
+procedure TTreeView.SetSelectedNode(const Value: TObject);
+begin
+  Selected := FindTreeNode(Value);
+end;
+
+
+
+{ TTreeViewCollectionView }
+
+procedure TTreeViewCollectionView.AddItemToView(const AItem: TObject);
+var
+  Item: TTreeViewItem;
+
+  procedure Branch( Parent: TTreeViewItem; AItem: TObject );
+  var
+    Item: TTreeViewItem;
+    obj: TObject;
+  begin
+    for obj in Template.GetChildren( AItem) do
+    begin
+      Item := TTreeViewItem.Create( FTreeView );
+      Item.Parent := Parent;
+      Item.Text := Template.GetTitle( obj);
+      UpdateTreeNode(Item, obj);
+      Branch( Item, obj);
+    end;
+  end;
+
+begin
+  Item := TTreeViewItem.Create( FTreeView );
+  Item.Parent := FTreeView;
+  Item.Text := Template.GetTitle( AItem);
+  UpdateTreeNode(Item, AItem);
+  Branch( Item, AItem);
+end;
+
+procedure TTreeViewCollectionView.UpdateTreeNode(const ATreeViewItem: TTreeViewItem; const AItem: TObject);
+begin
+  ATreeViewItem.TagObject := TObject(AItem);
+end;
+
+
+procedure TTreeViewCollectionView.BeginUpdateView;
+begin
+  FTreeView.BeginUpdate;
+end;
+
+procedure TTreeViewCollectionView.ClearItemsInView;
+var
+  Item: TTreeViewItem;
+  i: Integer;
+begin
+  for i := 0 to FtreeView.Count -1 do
+  begin
+    FtreeView.Items[ i].Free;
+  end;
+end;
+
+constructor TTreeViewCollectionView.Create(const ATreeView: TTreeView);
+begin
+  Assert(Assigned(ATreeView));
+  inherited Create;
+  FTreeView := ATreeView;
+end;
+
+procedure TTreeViewCollectionView.DeleteItemFromView(const AItemIndex: Integer);
+begin
+  FTreeView.Items[ AItemIndex].Free;
+end;
+
+procedure TTreeViewCollectionView.EndUpdateView;
+begin
+  FTreeView.EndUpdate;
+end;
+
+procedure TTreeViewCollectionView.UpdateAllItemsInView;
+var
+  Index: Integer;
+  Item: TObject;
+  Node: TTreeViewItem;
+begin
+  Index := 0;
+  for Item in Source do
+  begin
+    Node := FTreeView.Items[ Index];
+    UpdateTreeNode( Node, Item);
+    Inc(Index);
+  end;
+end;
+
+procedure TTreeViewCollectionView.UpdateItemInView(const AItem: TObject;
+  const APropertyName: String);
+var
+  Node: TTreeViewItem;
+begin
+  Node := FTreeView.FindTreeNode(AItem);
+  if (Node <> nil) then
+    UpdateTreeNode(Node, AItem);
 end;
 
 { Globals }

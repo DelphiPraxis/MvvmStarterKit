@@ -40,6 +40,7 @@ type
   TNodes = class(TgoObservableCollection<TNode>)
   public
     constructor Create;
+    destructor Destroy; overload;
     procedure Assign(const ASource: TEnumerable<TNode>);
   end;
 
@@ -120,5 +121,8 @@ begin
   inherited Create(True);
 end;
 
+destructor TNodes.Destroy;
+begin
 
+end;
 end.
