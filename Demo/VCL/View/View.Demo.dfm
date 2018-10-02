@@ -18,7 +18,7 @@ object ViewDemo: TViewDemo
     Top = 0
     Width = 501
     Height = 490
-    ActivePage = ts1
+    ActivePage = ts3
     Align = alClient
     TabOrder = 0
     object ts1: TTabSheet

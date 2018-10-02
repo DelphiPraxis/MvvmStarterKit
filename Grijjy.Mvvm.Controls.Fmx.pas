@@ -503,6 +503,44 @@ type
   end;
 {$ENDREGION 'FMX.TreeView'}
 
+{$REGION 'FMX.ComboBox'}
+
+  { TComboBox with support for light-weight two-way data binding.
+    Supports property changed notifications for: Text
+    Supports property changing notifications for: Text
+    NOTE: Both PropertyChanged and PropertyChangeTracking notifications are
+    fired for each individual keypress. }
+  TComboBox = class(Fmx.ListBox.TComboBox, IgoNotifyPropertyChanged,  IgoCollectionViewProvider,
+    IgoNotifyPropertyChangeTracking)
+  {$REGION 'Internal Declarations'}
+  private
+    FView: TgoCollectionView;
+
+    FOnPropertyChanged: IgoPropertyChangedEvent;
+    FOnPropertyChangeTracking: IgoPropertyChangeTrackingEvent;
+
+    FSelectedItem: TObject;
+    function GetSelectedItem: TObject; inline;
+    procedure SetSelectedItem(const Value: TObject);
+  protected
+    FChanged_: TNotifyEvent;
+    procedure Loaded; override;
+    procedure Change (Sender: TObject);
+  protected
+    { IgoNotifyPropertyChanged }
+    function GetPropertyChangedEvent: IgoPropertyChangedEvent;
+  protected
+    { IgoNotifyPropertyChangeTracking }
+    function GetPropertyChangeTrackingEvent: IgoPropertyChangeTrackingEvent;
+    function GetCollectionView: IgoCollectionView;
+  {$ENDREGION 'Internal Declarations'}
+  public
+    { Destructor }
+    destructor Destroy; override;
+    property SelectedItem: TObject read GetSelectedItem write SetSelectedItem;
+  end;
+{$ENDREGION 'FMX.ComboBox'}
+
 implementation
 
 uses
@@ -603,6 +641,22 @@ type
     constructor Create(const AListView: TListView);
   end;
 
+type
+  TComboBoxCollectionView = class(TgoCollectionView)
+  private
+    FComboBox: TComboBox;
+  protected
+    procedure ClearItemsInView; override;
+    procedure BeginUpdateView; override;
+    procedure EndUpdateView; override;
+    procedure AddItemToView(const AItem: TObject); override;
+    procedure DeleteItemFromView(const AItemIndex: Integer); override;
+    procedure UpdateItemInView(const AItem: TObject;
+      const APropertyName: String); override;
+    procedure UpdateAllItemsInView; override;
+  public
+    constructor Create(const AComboBox: TComboBox);
+  end;
 { TCheckBox }
 
 function TCheckBox.GetPropertyChangedEvent: IgoPropertyChangedEvent;
@@ -1508,8 +1562,6 @@ begin
     Enabled := FCanExecute();
 end;
 
-{ TreeView}
-
 { TTreeView }
 
 constructor TTreeView.Create(AOwner: TComponent);
@@ -1600,8 +1652,6 @@ procedure TTreeView.SetSelectedNode(const Value: TObject);
 begin
   Selected := FindTreeNode(Value);
 end;
-
-
 
 { TTreeViewCollectionView }
 
@@ -1694,6 +1744,163 @@ begin
   Node := FTreeView.FindTreeNode(AItem);
   if (Node <> nil) then
     UpdateTreeNode(Node, AItem);
+end;
+
+{ TComboBoxCollectionView }
+
+constructor TComboBoxCollectionView.Create(const AComboBox: TComboBox);
+begin
+  Assert(Assigned(AComboBox));
+  inherited Create;
+  FComboBox := AComboBox;
+end;
+
+procedure TComboBoxCollectionView.ClearItemsInView;
+begin
+  if Assigned(FComboBox) then
+  begin
+    FComboBox.Items.Clear;
+  end;
+end;
+
+procedure TComboBoxCollectionView.BeginUpdateView;
+begin
+  if Assigned(FComboBox) then
+  begin
+    FComboBox.Items.BeginUpdate;
+  end;
+end;
+
+
+procedure TComboBoxCollectionView.EndUpdateView;
+begin
+  if Assigned(FComboBox) then
+  begin
+    FComboBox.Items.EndUpdate;
+  end;
+end;
+
+procedure TComboBoxCollectionView.AddItemToView(const AItem: TObject);
+var
+  sItem: string;
+begin
+  if Assigned(FComboBox) then
+  begin
+    sItem := Template.GetTitle(AItem);
+    FComboBox.Items.AddObject( sItem, AItem);
+  end;
+end;
+
+procedure TComboBoxCollectionView.DeleteItemFromView(const AItemIndex: Integer);
+begin
+  if Assigned(FComboBox) then
+  begin
+    FComboBox.Items.Delete( AItemIndex);
+  end;
+end;
+
+procedure TComboBoxCollectionView.UpdateItemInView(const AItem: TObject;
+    const APropertyName: String);
+var
+  Index: Integer;
+begin
+  if Assigned(FComboBox) then
+  begin
+    Index := FComboBox.Items.IndexOfObject( AItem);
+     if (Index >= 0) then
+     begin
+       FComboBox.Items.Strings[Index] := Template.GetTitle( AItem);
+       FComboBox.Items.Objects[Index] := AItem;
+     end;
+  end;
+end;
+
+procedure TComboBoxCollectionView.UpdateAllItemsInView;
+var
+  Item: TObject;
+  sItem: string;
+  Index: Integer;
+begin
+  if Assigned(FComboBox) then
+  begin
+    Index := 0;
+    for Item in Source do
+    begin
+      sItem := FComboBox.Items.Strings[index];
+      FComboBox.Items.Strings[Index] := Template.GetTitle( Item);
+      FComboBox.Items.Objects[Index] := Item;
+      Inc(Index);
+    end;
+  end;
+end;
+
+
+{ TComboBox }
+
+destructor TComboBox.Destroy;
+begin
+  FView.Free;
+  inherited;
+end;
+
+Procedure TComboBox.Loaded;
+begin
+  inherited;
+  FChanged_ := onChange;
+  onChange := Change;
+end;
+
+procedure TComboBox.Change;
+begin
+  if Assigned(FOnPropertyChanged) then
+    FOnPropertyChanged.Invoke(Self, 'Text');
+
+  if Assigned(FOnPropertyChangeTracking) then
+    FOnPropertyChangeTracking.Invoke(Self, 'Text');
+
+  SetSelectedItem( Items.Objects[ItemIndex]);
+  inherited;
+end;
+
+function TComboBox.GetPropertyChangedEvent: IgoPropertyChangedEvent;
+begin
+  if (FOnPropertyChanged = nil) then
+    FOnPropertyChanged := TgoPropertyChangedEvent.Create;
+
+  Result := FOnPropertyChanged;
+end;
+
+function TComboBox.GetPropertyChangeTrackingEvent: IgoPropertyChangeTrackingEvent;
+begin
+  if (FOnPropertyChangeTracking = nil) then
+    FOnPropertyChangeTracking := TgoPropertyChangeTrackingEvent.Create;
+
+  Result := FOnPropertyChangeTracking;
+end;
+
+function TComboBox.GetCollectionView: IgoCollectionView;
+begin
+  if (FView = nil) then
+    FView := TComboBoxCollectionView.Create(Self);
+
+  Result := FView;
+end;
+
+ function TComboBox.GetSelectedItem: TObject;
+begin
+  Result := Items.Objects[ItemIndex];
+end;
+
+procedure TComboBox.SetSelectedItem(const Value: TObject);
+begin
+  if FSelectedItem <> Value then
+  begin
+    FSelectedItem := Value;
+
+    if Assigned(FOnPropertyChanged) then
+      FOnPropertyChanged.Invoke(Self, 'SelectedItem');
+  end;
+
 end;
 
 { Globals }
