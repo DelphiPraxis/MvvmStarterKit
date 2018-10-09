@@ -391,8 +391,8 @@ const
     TgoValueType.Str,          // tkUString,
     TgoValueType.Unsupported,  // tkClassRef
     TgoValueType.Ordinal,      // tkPointer
-    TgoValueType.Unsupported,  // tkProcedure
-    TgoValueType.Unsupported); //???
+    TgoValueType.Unsupported  // tkProcedure
+    {,TgoValueType.Unsupported}); //???
 
 { Property Getters }
 
