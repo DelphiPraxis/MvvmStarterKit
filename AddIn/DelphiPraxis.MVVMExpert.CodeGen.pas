@@ -10,7 +10,7 @@ type
   private
     FDict: TDictionary<string, string>;
   public
-    constructor CreateCreate( aModel: TModel);
+    constructor Create( aModel: TModel);
     procedure RecreateDict( aViewModel: TMView);
   end;
 
@@ -24,9 +24,11 @@ end;
 
 procedure TCodeGen.RecreateDict( aViewModel: TMView);
 var
+  Model: TModel;
   cfg: TConfig;
 begin
   //ProjectValues
+  Model := TModel.Instance;
   cfg := Model.Config;
   FDict.AddOrSetValue( '%%basepath%%', cfg.Path);
   FDict.AddOrSetValue( '%%basepath%%', cfg.Path);

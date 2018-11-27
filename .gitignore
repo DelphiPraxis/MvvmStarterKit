@@ -31,3 +31,6 @@ Html/
 dunitx-results.xml
 __history
 __recovery
+*.stat
+*.pas
+*.ithelper
