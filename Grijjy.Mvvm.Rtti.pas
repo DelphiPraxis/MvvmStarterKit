@@ -392,7 +392,7 @@ const
     TgoValueType.Unsupported,  // tkClassRef
     TgoValueType.Ordinal,      // tkPointer
     TgoValueType.Unsupported  // tkProcedure
-    {,TgoValueType.Unsupported}); //???
+    {$IFDEF VER330},TgoValueType.Unsupported{$ENDIF}); //???
 
 { Property Getters }
 

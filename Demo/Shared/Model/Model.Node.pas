@@ -123,6 +123,7 @@ end;
 
 destructor TNodes.Destroy;
 begin
-
+  inherited;
 end;
+
 end.
